@@ -488,7 +488,7 @@ function increaseDifficulty() {
     level++;
     enemiesPerLevel += 2; // Increase the number of enemies per level
     ENEMY_SPEED += 0.2; // Increase enemy speed slightly
-    baseEnemyHealth += (2 * (level - 1)); // Increase enemy health slightly
+    baseEnemyHealth += (20 * (level - 1)); // Increase enemy health slightly
 }
 
 function resetGame() {
