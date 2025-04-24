@@ -1,6 +1,6 @@
 /*================================================================
 
-Tower Defense Game - Version 1.0.0
+Tower Defense Game - Version 1.0.2
 
 ================================================================*/
 
@@ -18,6 +18,7 @@ const towers = [];
 let level = 1;
 let enemiesPerLevel = 5;
 let enemiesSpawned = 0;
+let enemyHealth = 100; // Default health for the enemy
 let money = 100;
 let lives = 10;
 let previewTower = null; // Holds the preview tower object
@@ -62,7 +63,7 @@ function gameLoop() {
     updateEnemies();
     updateTowers();
     drawUI();
-    drawShop(); // Draw the shop
+    drawShop();
 
     // Draw the preview tower if it exists
     if (previewTower) {
@@ -107,6 +108,47 @@ function gameOverScreen() {
 
 
 /*================================================================
+Projectile Class
+================================================================*/
+class Projectile {
+    constructor(x, y, target, damage, color) {
+        this.x = x;
+        this.y = y;
+        this.target = target;
+        this.damage = damage;
+        this.speed = 5; // Speed of the projectile
+        this.radius = 5; // Size of the projectile
+        this.color = color; // Color of the projectile
+    }
+
+    move() {
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < this.speed) {
+            // Hit the target
+            this.target.health -= this.damage;
+            return true; // Mark projectile for removal
+        } else {
+            // Move towards the target
+            this.x += (dx / distance) * this.speed;
+            this.y += (dy / distance) * this.speed;
+        }
+        return false; // Projectile is still active
+    }
+
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+/*..............................................................*/
+
+
+/*================================================================
 Tower Class
 ================================================================*/
 class Tower {
@@ -119,6 +161,7 @@ class Tower {
         this.maxCooldown = type.cooldown;
         this.color = type.color;
         this.showRange = false; // Flag to show/hide the range circle
+        this.projectiles = []; // Store projectiles fired by this tower
     }
 
     shoot() {
@@ -133,9 +176,22 @@ class Tower {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= this.range) {
-                enemy.health -= this.damage; // Use tower's damage
+                // Fire a projectile at the enemy
+                this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color));
                 this.cooldown = this.maxCooldown; // Reset cooldown
                 break;
+            }
+        }
+    }
+
+    updateProjectiles() {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const projectile = this.projectiles[i];
+            if (projectile.move()) {
+                // Remove the projectile if it hits the target
+                this.projectiles.splice(i, 1);
+            } else {
+                projectile.draw();
             }
         }
     }
@@ -152,6 +208,9 @@ class Tower {
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.stroke();
         }
+
+        // Update and draw projectiles
+        this.updateProjectiles();
     }
 
     drawPreview(x, y) {
@@ -175,12 +234,12 @@ class Tower {
 Enemy Class
 ================================================================*/
 class Enemy {
-    constructor() {
+    constructor(health) {
         this.x = path[0].x;
         this.y = path[0].y;
         this.speed = ENEMY_SPEED;
         this.pathIndex = 0;
-        this.health = 100;
+        this.health = health || 100; // Default health for the enemy
         this.maxHealth = 100; // Store the maximum health for scaling the health bar
     }
 
@@ -214,7 +273,7 @@ class Enemy {
         // Draw the health bar
         const healthBarWidth = 50;
         const healthBarHeight = 10;
-        const healthPercentage = this.health / this.maxHealth;
+        const healthPercentage = this.health / (this.maxHealth + this.health);
         const healthBarX = this.x - healthBarWidth / 2;
         const healthBarY = this.y - 22; // Position above the enemy
 
@@ -398,7 +457,7 @@ Game Logic Functions
 ================================================================*/
 function spawnEnemy() {
     enemiesSpawned++;
-    enemies.push(new Enemy());
+    enemies.push(new Enemy(enemyHealth));
 }
 
 function updateEnemies() {
@@ -424,6 +483,7 @@ function increaseDifficulty() {
     level++;
     enemiesPerLevel += 2; // Increase the number of enemies per level
     ENEMY_SPEED += 0.2; // Increase enemy speed slightly
+    enemyHealth += 20; // Increase enemy health slightly
 }
 
 function resetGame() {
