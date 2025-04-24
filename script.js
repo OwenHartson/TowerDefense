@@ -18,7 +18,7 @@ const towers = [];
 let level = 1;
 let enemiesPerLevel = 5;
 let enemiesSpawned = 0;
-let enemyHealth = 100; // Default health for the enemy
+let baseEnemyHealth = 100; // Base health for enemies
 let money = 100;
 let lives = 10;
 let previewTower = null; // Holds the preview tower object
@@ -234,13 +234,13 @@ class Tower {
 Enemy Class
 ================================================================*/
 class Enemy {
-    constructor(health) {
+    constructor() {
         this.x = path[0].x;
         this.y = path[0].y;
         this.speed = ENEMY_SPEED;
         this.pathIndex = 0;
-        this.health = health || 100; // Default health for the enemy
-        this.maxHealth = 100; // Store the maximum health for scaling the health bar
+        this.health = baseEnemyHealth; // Default health for the enemy
+        this.maxHealth = baseEnemyHealth; // Store the maximum health for scaling the health bar
     }
 
     move() {
@@ -273,7 +273,8 @@ class Enemy {
         // Draw the health bar
         const healthBarWidth = 50;
         const healthBarHeight = 10;
-        const healthPercentage = this.health / (this.maxHealth + this.health);
+        //const healthPercentage = this.health > this.maxHealth ? this.health / (this.maxHealth + this.health) : this.health / this.maxHealth; // Calculate health percentage
+        const healthPercentage = this.health / this.maxHealth; // Calculate health percentage
         const healthBarX = this.x - healthBarWidth / 2;
         const healthBarY = this.y - 22; // Position above the enemy
 
@@ -322,7 +323,6 @@ canvas.addEventListener('click', (event) => {
 
             if (x >= buttonX && x <= buttonX + 130 && y >= buttonY && y <= buttonY + 100) {
                 selectedTowerType = tower; // Select the tower type
-                console.log(`Selected tower: ${tower.name}`);
             }
         });
         return;
@@ -330,13 +330,11 @@ canvas.addEventListener('click', (event) => {
 
     // Check if the tower overlaps with an existing tower
     if (isTowerOverlapping(x, y)) {
-        console.log("Cannot place tower here. Towers cannot overlap.");
         return; // Prevent placing the tower
     }
 
     // Check if the tower overlaps with the path
     if (isTowerOverlappingPath(x, y)) {
-        console.log("Cannot place tower on the path.");
         return; // Prevent placing the tower
     }
 
@@ -429,6 +427,13 @@ function drawShop() {
         const x = shopX + 10 + index * 150; // Position each tower button horizontally
         const y = shopY + 10; // Margin from the top of the shop
 
+        // Check if the player can afford the tower
+        if (money >= tower.cost) {
+            ctx.fillStyle = tower.color; // Use the tower's color if affordable
+        } else {
+            ctx.fillStyle = 'gray'; // Use gray if the player cannot afford it
+        }
+
         // Draw tower button
         ctx.fillStyle = tower.color;
         ctx.fillRect(x, y, 130, 100);
@@ -457,7 +462,7 @@ Game Logic Functions
 ================================================================*/
 function spawnEnemy() {
     enemiesSpawned++;
-    enemies.push(new Enemy(enemyHealth));
+    enemies.push(new Enemy());
 }
 
 function updateEnemies() {
@@ -483,7 +488,7 @@ function increaseDifficulty() {
     level++;
     enemiesPerLevel += 2; // Increase the number of enemies per level
     ENEMY_SPEED += 0.2; // Increase enemy speed slightly
-    enemyHealth += 20; // Increase enemy health slightly
+    baseEnemyHealth += (2 * (level - 1)); // Increase enemy health slightly
 }
 
 function resetGame() {
