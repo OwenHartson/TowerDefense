@@ -412,6 +412,7 @@ function drawUI() {
     drawText(`Enemies Spawned: ${enemiesSpawned}`, 10, 110);
     drawText(`Enemies per Level: ${enemiesPerLevel}`, 10, 140);
     drawText(`Enemy Speed: ${ENEMY_SPEED.toFixed(1)}`, 10, 170);
+    drawText(`Enemy Health (lvl ${level}): ${baseEnemyHealth}`, 10, 200);
 }
 
 function drawShop() {
@@ -488,7 +489,7 @@ function increaseDifficulty() {
     level++;
     enemiesPerLevel += 2; // Increase the number of enemies per level
     ENEMY_SPEED += 0.2; // Increase enemy speed slightly
-    baseEnemyHealth += (20 * (level - 1)); // Increase enemy health slightly
+    baseEnemyHealth += (15 * (level - 1)); // Increase enemy health slightly
 }
 
 function resetGame() {
@@ -499,6 +500,7 @@ function resetGame() {
     money = 100;
     lives = 10;
     ENEMY_SPEED = 1;
+    baseEnemyHealth = 100; // Reset enemy health
     enemies.length = 0; // Clear enemies array
     towers.length = 0; // Clear towers array
 
