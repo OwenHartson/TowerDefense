@@ -1,6 +1,6 @@
 /*================================================================
 
-Tower Defense Game - Version 1.0.7
+Tower Defense Game - Version 1.0.8
 
 ================================================================*/
 
@@ -49,7 +49,7 @@ const towerTypes = [
     { name: 'Basic Tower', cost: 50, range: 100, damage: 20, cooldown: 50, color: '#7DF9FF', description: '' },
     { name: 'Sniper Tower', cost: 100, range: 200, damage: 50, cooldown: 100, color: '#AFE1AF', description: '' },
     { name: 'Rapid Tower', cost: 75, range: 80, damage: 10, cooldown: 20, color: '#FFB6C1', description: '' },
-    { name: 'Flame Tower', cost: 150, range: 120, damage: 35, cooldown: 80, color: '#FF4500', description: 'Deals damage over time (5 dmg for 3 sec)' },
+    { name: 'Flame Tower', cost: 200, range: 120, damage: 35, cooldown: 80, color: '#FF4500', description: 'Deals 50 damage every 3 seconds', damageOverTime: 50, duration: 3 },
 ];
 
 let selectedTowerType = towerTypes[0]; // Default selected tower type
@@ -194,7 +194,8 @@ class Tower {
                 // Fire a projectile at the enemy
                 if (this.isFlameTower) {
                     // Flame Tower deals damage over time
-                    this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color, 5, 3)); // 5 DoT damage for 3 seconds
+                    let obj = findObjectByName(towerTypes, 'Flame Tower');
+                    this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color, obj.damageOverTime, obj.duration)); // 5 DoT damage for 3 seconds
                 } else {
                     // Regular tower
                     this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color));
@@ -448,6 +449,10 @@ canvas.addEventListener('mousemove', (event) => {
 /*================================================================
 Utility Functions
 ================================================================*/
+function findObjectByName(array, name) {
+    return array.find(obj => obj.name === name);
+}
+
 function drawText(text, x, y, font = '20px Arial', color = 'black') {
     ctx.fillStyle = color;
     ctx.font = font;
@@ -504,6 +509,24 @@ function drawShop() {
         }
     });
 
+    // Helper function to wrap text
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i] + ' ';
+            const testWidth = ctx.measureText(testLine).width;
+            if (testWidth > maxWidth && i > 0) {
+                ctx.fillText(line, x, y);
+                line = words[i] + ' ';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, y);
+    }
+
     // Function to draw a single shop item
     const drawShopItem = (tower, index) => {
         const column = index % columnCount; // Determine the column (0 or 1)
@@ -518,7 +541,7 @@ function drawShop() {
         const isSelected = selectedTowerType === tower;
 
         // Adjust box size and style based on hover state
-        const boxHeight = isHovered ? 120 : itemHeight; // Expand height if hovered
+        const boxHeight = isHovered ? 150 : itemHeight; // Expand height if hovered
         const boxColor = isHovered ? tower.color : '#ffffff'; // Light blue for hovered, white otherwise
 
         // Draw tower button
@@ -549,7 +572,11 @@ function drawShop() {
             ctx.fillText(`Cost: $${tower.cost}`, x + 10, y + 50);
             ctx.fillText(`Range: ${tower.range}`, x + 10, y + 70);
             ctx.fillText(`Damage: ${tower.damage}`, x + 10, y + 90);
-            ctx.fillText(`Description: ${tower.description}`, x + 10, y + 110);
+            ctx.fillText(`Description:`, x + 10, y + 110);
+
+            // Wrap and draw the description text
+            ctx.font = '12px Arial';
+            wrapText(ctx, tower.description, x + 20, y + 125, itemWidth - 20, 14);
         }
     };
 
