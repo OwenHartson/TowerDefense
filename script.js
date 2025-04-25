@@ -1,6 +1,6 @@
 /*================================================================
 
-Tower Defense Game - Version 1.0.5
+Tower Defense Game - Version 1.0.7
 
 ================================================================*/
 
@@ -22,6 +22,8 @@ let baseEnemyHealth = 100; // Base health for enemies
 let money = 100;
 let lives = 10;
 let previewTower = null; // Holds the preview tower object
+let mouseX = 0; // Mouse X position
+let mouseY = 0; // Mouse Y position
 
 // Path for enemies to follow
 const path = [
@@ -347,21 +349,36 @@ canvas.addEventListener('click', (event) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    const shopWidth = 150 * towerTypes.length + 10;
-    const shopX = canvas.width - shopWidth;
-    const shopY = 10;
+    const columnCount = 2; // Number of columns
+    const itemWidth = 150; // Width of each shop item
+    const itemHeight = 50; // Default height of each shop item
+    const itemSpacing = 15; // Spacing between items
+    const shopX = canvas.width - (columnCount * (itemWidth + itemSpacing)); // Position the shop in the top-right corner
+    const shopY = 10; // Margin from the top
+    const shopWidth = columnCount * (itemWidth + itemSpacing) - itemSpacing; // Total width of the shop
+    const rowCount = Math.ceil(towerTypes.length / columnCount); // Number of rows
+    const shopHeight = rowCount * (itemHeight + itemSpacing) - itemSpacing; // Total height of the shop
 
-    // Check if the click is in the shop area
-    if (x >= shopX && x <= shopX + shopWidth && y >= shopY && y <= shopY + 120) {
+    // Check if the click is inside the shop area
+    if (x >= shopX - 10 && x <= shopX - 10 + shopWidth + 20 && y >= shopY - 10 && y <= shopY - 10 + shopHeight + 20) {
+        // Check if the click is in the shop area
         towerTypes.forEach((tower, index) => {
-            const buttonX = shopX + 10 + index * 150;
-            const buttonY = shopY + 10;
+            const column = index % columnCount; // Determine the column (0 or 1)
+            const row = Math.floor(index / columnCount); // Determine the row
+            const buttonX = shopX + column * (itemWidth + itemSpacing); // Calculate x position
+            const buttonY = shopY + row * (itemHeight + itemSpacing); // Calculate y position
 
-            if (x >= buttonX && x <= buttonX + 130 && y >= buttonY && y <= buttonY + 100) {
+            // Adjust box size based on selection
+            const isSelected = selectedTowerType === tower;
+            const boxHeight = isSelected ? 120 : itemHeight; // Expand height if selected
+
+            // Check if the click is within the button
+            if (x >= buttonX && x <= buttonX + itemWidth && y >= buttonY && y <= buttonY + boxHeight) {
                 selectedTowerType = tower; // Select the tower type
             }
         });
-        return;
+
+        return; // Prevent placing the tower if the click is inside the shop
     }
 
     // Check if the tower overlaps with an existing tower
@@ -380,6 +397,13 @@ canvas.addEventListener('click', (event) => {
         money -= selectedTowerType.cost;
         previewTower = null; // Remove the preview tower after placing
     }
+});
+
+// Update mouse position on mousemove
+canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = event.clientX - rect.left;
+    mouseY = event.clientY - rect.top;
 });
 
 // When a tower type is selected, create a preview tower
@@ -445,52 +469,95 @@ function drawUI() {
     drawText(`Money: $${money}`, 10, 20);
     drawText(`Lives: ${lives}`, 10, 50);
     drawText(`Level: ${level}`, 10, 80);
-    drawText(`Enemies Spawned: ${enemiesSpawned}`, 10, 110);
-    drawText(`Enemies per Level: ${enemiesPerLevel}`, 10, 140);
-    drawText(`Enemy Speed: ${ENEMY_SPEED.toFixed(1)}`, 10, 170);
-    drawText(`Enemy Health (lvl ${level}): ${baseEnemyHealth}`, 10, 200);
+    drawText(`Enemies Spawned: ${enemiesSpawned} / ${enemiesPerLevel}`, 10, 110);
+    drawText(`Enemy Speed: ${ENEMY_SPEED.toFixed(1)}`, 10, 140);
+    drawText(`Enemy Health (lvl ${level}): ${baseEnemyHealth}`, 10, 170);
 }
 
 function drawShop() {
-    const shopWidth = 150 * towerTypes.length + 10; // Calculate shop width based on the number of tower types
-    const shopX = canvas.width - shopWidth; // Position the shop in the top-right corner
+    const columnCount = 2; // Number of columns
+    const itemWidth = 150; // Width of each shop item
+    const itemHeight = 50; // Default height of each shop item
+    const itemSpacing = 15; // Spacing between items
+    const shopX = canvas.width - (columnCount * (itemWidth + itemSpacing)); // Position the shop in the top-right corner
     const shopY = 10; // Margin from the top
 
+    // Calculate the shop width and height dynamically
+    const shopWidth = columnCount * (itemWidth + itemSpacing) - itemSpacing;
+    const rowCount = Math.ceil(towerTypes.length / columnCount); // Number of rows
+    const shopHeight = rowCount * (itemHeight + itemSpacing) - itemSpacing;
+
     // Draw the shop background
-    ctx.fillStyle = 'lightgray';
-    ctx.fillRect(shopX, shopY, shopWidth, 120);
+    ctx.fillStyle = '#f0f0f0'; // Light gray background
+    ctx.fillRect(shopX - 10, shopY - 10, shopWidth + 20, shopHeight + 20); // Add padding around the shop
+
+    // Separate the top and bottom rows
+    const topRowItems = [];
+    const bottomRowItems = [];
 
     towerTypes.forEach((tower, index) => {
-        const x = shopX + 10 + index * 150; // Position each tower button horizontally
-        const y = shopY + 10; // Margin from the top of the shop
-
-        // Check if the player can afford the tower
-        if (money >= tower.cost) {
-            ctx.fillStyle = tower.color; // Use the tower's color if affordable
+        const row = Math.floor(index / columnCount); // Determine the row
+        if (row === 0) {
+            topRowItems.push({ tower, index });
         } else {
-            ctx.fillStyle = 'gray'; // Use gray if the player cannot afford it
-        }
-
-        // Draw tower button
-        ctx.fillStyle = tower.color;
-        ctx.fillRect(x, y, 130, 100);
-
-        // Draw tower details
-        ctx.fillStyle = 'black';
-        ctx.font = '14px Arial';
-        ctx.fillText(tower.name, x + 5, y + 20);
-        ctx.fillText(`Cost: $${tower.cost}`, x + 5, y + 40);
-        ctx.fillText(`Range: ${tower.range}`, x + 5, y + 60);
-        ctx.fillText(`Damage: ${tower.damage}`, x + 5, y + 80);
-        ctx.fillText(`Description: ${tower.description}`, x + 5, y + 100);
-
-        // Highlight the selected tower
-        if (selectedTowerType === tower) {
-            ctx.strokeStyle = 'yellow';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x, y, 130, 100);
+            bottomRowItems.push({ tower, index });
         }
     });
+
+    // Function to draw a single shop item
+    const drawShopItem = (tower, index) => {
+        const column = index % columnCount; // Determine the column (0 or 1)
+        const row = Math.floor(index / columnCount); // Determine the row
+        const x = shopX + column * (itemWidth + itemSpacing); // Calculate x position
+        const y = shopY + row * (itemHeight + itemSpacing); // Calculate y position
+
+        // Check if the mouse is hovering over this item
+        const isHovered = mouseX >= x && mouseX <= x + itemWidth && mouseY >= y && mouseY <= y + itemHeight;
+
+        // Check if the tower is selected
+        const isSelected = selectedTowerType === tower;
+
+        // Adjust box size and style based on hover state
+        const boxHeight = isHovered ? 120 : itemHeight; // Expand height if hovered
+        const boxColor = isHovered ? tower.color : '#ffffff'; // Light blue for hovered, white otherwise
+
+        // Draw tower button
+        ctx.fillStyle = boxColor;
+        ctx.fillRect(x, y, itemWidth, boxHeight);
+
+        // Draw tower border
+        if (isSelected) {
+            ctx.strokeStyle = tower.color; // Border for selected tower
+            ctx.lineWidth = 4;
+        } else if (isHovered) {
+            ctx.strokeStyle = tower.color; // Blue border for hovered tower
+            ctx.lineWidth = 2;
+        } else {
+            ctx.strokeStyle = '#cccccc'; // Gray border for unselected tower
+            ctx.lineWidth = 2;
+        }
+        ctx.strokeRect(x, y, itemWidth, boxHeight);
+
+        // Draw tower name
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.fillText(tower.name, x + 10, y + 20);
+
+        // If the item is hovered, display additional details
+        if (isHovered) {
+            ctx.font = '14px Arial';
+            ctx.fillText(`Cost: $${tower.cost}`, x + 10, y + 50);
+            ctx.fillText(`Range: ${tower.range}`, x + 10, y + 70);
+            ctx.fillText(`Damage: ${tower.damage}`, x + 10, y + 90);
+            ctx.fillText(`Description: ${tower.description}`, x + 10, y + 110);
+        }
+    };
+
+    // Draw the bottom row items first
+    bottomRowItems.forEach(({ tower, index }) => drawShopItem(tower, index));
+
+    // Draw the top row items last (so they appear above the bottom row)
+    topRowItems.forEach(({ tower, index }) => drawShopItem(tower, index));
 }
 /*..............................................................*/
 
