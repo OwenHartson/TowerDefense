@@ -1,6 +1,6 @@
 /*================================================================
 
-Tower Defense Game - Version 1.0.2
+Tower Defense Game - Version 1.0.5
 
 ================================================================*/
 
@@ -40,10 +40,14 @@ const path = [
 ];
 
 // Tower types and their properties (show up in the tower selection menu)
+// #7DF9FF - Electric blue
+// #AFE1AF - Celadon green
+// #FFB6C1 - Light pink
 const towerTypes = [
-    { name: 'Basic Tower', cost: 50, range: 100, damage: 20, cooldown: 50, color: '#4287f5' },
-    { name: 'Sniper Tower', cost: 100, range: 200, damage: 50, cooldown: 100, color: 'green' },
-    { name: 'Rapid Tower', cost: 75, range: 80, damage: 10, cooldown: 20, color: 'purple' }
+    { name: 'Basic Tower', cost: 50, range: 100, damage: 20, cooldown: 50, color: '#7DF9FF', description: '' },
+    { name: 'Sniper Tower', cost: 100, range: 200, damage: 50, cooldown: 100, color: '#AFE1AF', description: '' },
+    { name: 'Rapid Tower', cost: 75, range: 80, damage: 10, cooldown: 20, color: '#FFB6C1', description: '' },
+    { name: 'Flame Tower', cost: 150, range: 120, damage: 35, cooldown: 80, color: '#FF4500', description: 'Deals damage over time (5 dmg for 3 sec)' },
 ];
 
 let selectedTowerType = towerTypes[0]; // Default selected tower type
@@ -111,7 +115,7 @@ function gameOverScreen() {
 Projectile Class
 ================================================================*/
 class Projectile {
-    constructor(x, y, target, damage, color) {
+    constructor(x, y, target, damage, color, damageOverTime = 0, duration = 0) {
         this.x = x;
         this.y = y;
         this.target = target;
@@ -119,6 +123,8 @@ class Projectile {
         this.speed = 5; // Speed of the projectile
         this.radius = 5; // Size of the projectile
         this.color = color; // Color of the projectile
+        this.damageOverTime = damageOverTime; // Damage over time
+        this.duration = duration; // Duration of the DoT effect
     }
 
     move() {
@@ -129,6 +135,12 @@ class Projectile {
         if (distance < this.speed) {
             // Hit the target
             this.target.health -= this.damage;
+
+            // Apply damage over time if specified
+            if (this.damageOverTime > 0 && this.duration > 0) {
+                this.target.applyDamageOverTime(this.damageOverTime, this.duration);
+            }
+
             return true; // Mark projectile for removal
         } else {
             // Move towards the target
@@ -162,6 +174,7 @@ class Tower {
         this.color = type.color;
         this.showRange = false; // Flag to show/hide the range circle
         this.projectiles = []; // Store projectiles fired by this tower
+        this.isFlameTower = type.name === 'Flame Tower'; // Check if this is a Flame Tower
     }
 
     shoot() {
@@ -177,7 +190,13 @@ class Tower {
 
             if (distance <= this.range) {
                 // Fire a projectile at the enemy
-                this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color));
+                if (this.isFlameTower) {
+                    // Flame Tower deals damage over time
+                    this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color, 5, 3)); // 5 DoT damage for 3 seconds
+                } else {
+                    // Regular tower
+                    this.projectiles.push(new Projectile(this.x, this.y, enemy, this.damage, this.color));
+                }
                 this.cooldown = this.maxCooldown; // Reset cooldown
                 break;
             }
@@ -241,6 +260,23 @@ class Enemy {
         this.pathIndex = 0;
         this.health = baseEnemyHealth; // Default health for the enemy
         this.maxHealth = baseEnemyHealth; // Store the maximum health for scaling the health bar
+        this.dotTimers = []; // Array to track DoT effects
+    }
+
+    applyDamageOverTime(damage, duration) {
+        const interval = 1000; // Apply damage every second
+        const ticks = Math.floor(duration / (interval / 1000)); // Number of ticks
+        for (let i = 0; i < ticks; i++) {
+            this.dotTimers.push(setTimeout(() => {
+                this.health -= damage;
+            }, i * interval));
+        }
+    }
+
+    clearDoT() {
+        // Clear all DoT timers when the enemy is removed
+        this.dotTimers.forEach(timer => clearTimeout(timer));
+        this.dotTimers = [];
     }
 
     move() {
@@ -260,6 +296,7 @@ class Enemy {
             }
         } else {
             lives--;
+            this.clearDoT(); // Clear DoT timers when the enemy reaches the end
             return true; // Enemy reached the end
         }
         return false;
@@ -273,7 +310,6 @@ class Enemy {
         // Draw the health bar
         const healthBarWidth = 50;
         const healthBarHeight = 10;
-        //const healthPercentage = this.health > this.maxHealth ? this.health / (this.maxHealth + this.health) : this.health / this.maxHealth; // Calculate health percentage
         const healthPercentage = this.health / this.maxHealth; // Calculate health percentage
         const healthBarX = this.x - healthBarWidth / 2;
         const healthBarY = this.y - 22; // Position above the enemy
@@ -446,6 +482,7 @@ function drawShop() {
         ctx.fillText(`Cost: $${tower.cost}`, x + 5, y + 40);
         ctx.fillText(`Range: ${tower.range}`, x + 5, y + 60);
         ctx.fillText(`Damage: ${tower.damage}`, x + 5, y + 80);
+        ctx.fillText(`Description: ${tower.description}`, x + 5, y + 100);
 
         // Highlight the selected tower
         if (selectedTowerType === tower) {
