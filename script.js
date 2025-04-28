@@ -1,6 +1,6 @@
 /*================================================================
 
-Tower Defense Game - Version 1.0.8
+Tower Defense Game - Version 1.0.9
 
 ================================================================*/
 
@@ -330,6 +330,42 @@ class Enemy {
 
 
 /*================================================================
+Enemy Sub-Class (Tank)
+================================================================*/
+class TankEnemy extends Enemy {
+    constructor() {
+        super();
+        this.health = baseEnemyHealth * 1.5; // 1.5 times the current enemy health
+        this.maxHealth = this.health; // Update max health for the health bar
+        this.color = 'blue'; // Set the color of the enemy
+        this.size = 30; // Slightly larger size
+    }
+
+    draw() {
+        // Draw the enemy
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+
+        // Draw the health bar
+        const healthBarWidth = 50;
+        const healthBarHeight = 10;
+        const healthPercentage = this.health / this.maxHealth; // Calculate health percentage
+        const healthBarX = this.x - healthBarWidth / 2;
+        const healthBarY = this.y - this.size / 2 - 12; // Position above the enemy
+
+        // Background of the health bar (gray)
+        ctx.fillStyle = 'gray';
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+        // Foreground of the health bar (green)
+        ctx.fillStyle = 'green';
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
+    }
+}
+/*..............................................................*/
+
+
+/*================================================================
 Event Listeners
 ================================================================*/
 // Mouse move event to update the preview tower position
@@ -594,7 +630,13 @@ Game Logic Functions
 ================================================================*/
 function spawnEnemy() {
     enemiesSpawned++;
-    enemies.push(new Enemy());
+
+    // Check if this is the last enemy in the wave
+    if (enemiesSpawned === enemiesPerLevel) {
+        enemies.push(new TankEnemy()); // Spawn a tank enemy as the last enemy
+    } else {
+        enemies.push(new Enemy()); // Spawn a regular enemy
+    }
 }
 
 function updateEnemies() {
@@ -602,7 +644,15 @@ function updateEnemies() {
         const enemy = enemies[i];
         if (enemy.move() || enemy.health <= 0) {
             enemies.splice(i, 1);
-            if (enemy.health <= 0) money += 10;
+
+            // Reward money based on enemy type
+            if (enemy.health <= 0) {
+                if (enemy instanceof TankEnemy) {
+                    money += 20; // Double the money for TankEnemy
+                } else {
+                    money += 10; // Regular money for normal enemies
+                }
+            }
         } else {
             enemy.draw();
         }
